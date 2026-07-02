@@ -85,7 +85,14 @@ aligned = align_prediction_to_underlying(underlying, prediction)
 features = add_rolling_zscore(aligned, column="underlying_return", window=30)
 ```
 
+## Notebooks
+
+The notebooks use generated data and are safe to run without credentials:
+
+1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, placeholder signals, and toy P&L.
+2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
+3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
+
 ## Disclaimer
 
 This repository is educational and sanitised. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and intentionally simple placeholder logic to demonstrate research structure without disclosing proprietary work.
-
