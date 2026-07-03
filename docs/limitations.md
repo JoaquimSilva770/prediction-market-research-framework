@@ -1,13 +1,12 @@
 # Limitations
 
-This repository uses synthetic examples only.
+I use synthetic examples only.
 
-It does not prove that a prediction-market strategy works. It does not include live execution, real market selection, private thresholds, or private performance. The goal is to demonstrate clean research mechanics and good judgement around what should not be public.
+This does not prove that a prediction-market strategy works. It does not include live execution, real market selection, private thresholds, or private performance. The point is to show clean research mechanics and good judgement around what belongs in public.
 
-Future public-safe extensions could include:
+Public-safe extensions that fit this repo:
 
 - richer synthetic data generators
 - more explicit walk-forward validation examples
 - notebooks with explanatory charts
 - additional tests for edge cases around stale data and trading-session gaps
-

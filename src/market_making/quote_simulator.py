@@ -17,7 +17,7 @@ def make_inventory_skewed_quote(
     """Create a synthetic quote around fair value with inventory skew.
 
     Positive inventory shifts quotes lower in this toy model to encourage sells.
-    This is a public-safe illustration, not real quoting logic.
+    I use this as a public-safe illustration, not as real quoting logic.
     """
 
     mid = fair_value - inventory * inventory_skew

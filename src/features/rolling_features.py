@@ -33,8 +33,8 @@ def add_rolling_zscore(
 ) -> pd.DataFrame:
     """Add a rolling z-score column.
 
-    The z-score is intentionally generic. Public examples should not use private
-    trigger levels or strategy-specific transformations.
+    The z-score is generic. Public examples avoid private trigger levels and
+    strategy-specific transformations.
     """
 
     data = add_rolling_mean_std(
@@ -48,4 +48,3 @@ def add_rolling_zscore(
     z_col = f"{column}_zscore_{window}"
     data[z_col] = (data[column] - data[mean_col]) / data[std_col].replace(0, pd.NA)
     return data
-

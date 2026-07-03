@@ -1,7 +1,7 @@
 """Toy signal functions for public examples.
 
-These functions are intentionally simple and should not be interpreted as
-strategy logic.
+The functions stay simple so they read as scaffolding rather than strategy
+logic.
 """
 
 from __future__ import annotations
@@ -31,4 +31,3 @@ def capped_position_from_signal(
     """Convert a toy signal into a capped position series."""
 
     return signal.clip(lower=-1, upper=1).astype(float) * max_position
-

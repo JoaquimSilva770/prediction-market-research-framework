@@ -1,9 +1,9 @@
 # Notebooks
 
-These notebooks use synthetic data only.
+I use synthetic data only in these notebooks.
 
 1. `01_synthetic_prediction_market_signal.ipynb`
 2. `02_synthetic_event_backtest.ipynb`
 3. `03_market_making_backtester_skeleton.ipynb`
 
-These notebooks should use only generated toy data. They should not import private datasets, exact thresholds, market identifiers, or strategy results.
+The notebooks use generated toy data only. They do not import private datasets, exact thresholds, market identifiers, or strategy results.

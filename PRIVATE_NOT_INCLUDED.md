@@ -1,6 +1,6 @@
 # Private Components Not Included
 
-This repository is a sanitised public framework. It does not copy private strategy code, live data, exact case-study results, or internal research outputs.
+I keep this repo synthetic and public-safe. It does not copy private strategy code, live data, exact case-study results, or internal research outputs.
 
 ## Excluded Data
 
@@ -38,4 +38,3 @@ This repository is a sanitised public framework. It does not copy private strate
 |---|---|---|
 | `.env` and environment-specific configs | Credentials and local settings are never public | High |
 | Any API-key plumbing from private workflows | Not required for synthetic public examples | Medium |
-

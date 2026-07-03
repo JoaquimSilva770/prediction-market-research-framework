@@ -2,15 +2,15 @@
 
 A sanitised research framework for studying information transmission between financial markets and prediction markets.
 
-This repository is designed as a public, recruiter-facing version of private prediction-market research work. It demonstrates data handling, timestamp alignment, rolling feature construction, event-driven backtesting structure, transaction-cost modelling, and inventory-aware market-making concepts using synthetic data only.
+I built this as the public-facing version of my prediction-market research workflow. It shows the engineering and research mechanics behind the work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
 
-It does not contain a live trading strategy, private datasets, market-selection logic, exact thresholds, sizing rules, coefficients, or realised performance.
+All examples use synthetic data. I do not include live trading logic, private datasets, market-selection rules, exact thresholds, sizing rules, coefficients, or realised performance.
 
 ## Research Question
 
 Can movements in related financial markets provide useful information about the pricing of prediction-market contracts around discrete events?
 
-The public version focuses on the research process rather than any deployable edge:
+I focus on the research process rather than any deployable edge:
 
 - aligning asynchronous market data safely
 - handling stale prediction-market observations
@@ -20,12 +20,12 @@ The public version focuses on the research process rather than any deployable ed
 - tracking inventory and exposure in a market-making setting
 - documenting limitations before interpreting results
 
-## What This Repo Demonstrates
+## What I Show Here
 
 - Python market-data handling with `pandas` and `numpy`
 - timestamp-safe joins between synthetic financial and prediction-market data
 - rolling mean, rolling volatility, and placeholder z-score scaffolding
-- intentionally simple placeholder signals
+- simple placeholder signals
 - event-driven backtesting structure
 - transaction-cost and slippage-aware P&L accounting
 - capped exposure and inventory bookkeeping
@@ -34,7 +34,7 @@ The public version focuses on the research process rather than any deployable ed
 
 ## What Is Intentionally Excluded
 
-The private research project contains material that is not appropriate for a public CV repository. This repo excludes:
+I keep the private research separate from this public repo. In particular, I exclude:
 
 - exact live signals
 - exact thresholds or trigger values
@@ -54,7 +54,7 @@ See [PRIVATE_NOT_INCLUDED.md](PRIVATE_NOT_INCLUDED.md) for the public exclusion 
 ```text
 prediction-market-research-framework/
   docs/                 Research-process notes and methodology
-  notebooks/            Synthetic notebooks, added progressively
+  notebooks/            Synthetic notebooks
   src/                  Reusable synthetic research modules
   tests/                Unit tests for core mechanics
 ```
@@ -87,7 +87,7 @@ features = add_rolling_zscore(aligned, column="underlying_return", window=30)
 
 ## Notebooks
 
-The notebooks use generated data and are safe to run without credentials:
+The notebooks use generated data and run without credentials:
 
 1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, placeholder signals, and toy P&L.
 2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
@@ -95,4 +95,4 @@ The notebooks use generated data and are safe to run without credentials:
 
 ## Disclaimer
 
-This repository is educational and sanitised. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and intentionally simple placeholder logic to demonstrate research structure without disclosing proprietary work.
+I present this as an educational and sanitised research framework. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and simple placeholder logic so the research structure is visible without disclosing private work.

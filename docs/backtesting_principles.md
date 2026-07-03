@@ -1,6 +1,6 @@
 # Backtesting Principles
 
-The backtesting code in this repository is intentionally simple. It is a structure for thinking, not a claim of profitability.
+I keep the backtesting code simple on purpose. I use it as a structure for thinking, not as a claim of profitability.
 
 Key principles:
 
@@ -10,4 +10,3 @@ Key principles:
 - Avoid day-specific or timestamp-specific rules.
 - Treat stale prediction-market prices as a risk, not free signal.
 - Prefer robustness and explainability over maximum in-sample P&L.
-
