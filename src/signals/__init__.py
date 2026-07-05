@@ -1,2 +1,1 @@
-"""Placeholder signal functions."""
-
+"""Example signal functions."""

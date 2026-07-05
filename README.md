@@ -1,10 +1,10 @@
 # Prediction Market Research Framework
 
-A sanitised research framework for studying information transmission between financial markets and prediction markets.
+A public research framework for studying information transmission between financial markets and prediction markets.
 
-I built this as the public-facing version of my prediction-market research workflow. It shows the engineering and research mechanics behind the work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
+I built this to show the engineering and research mechanics behind my prediction-market work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
 
-All examples use synthetic data. I do not include live trading logic, private datasets, market-selection rules, exact thresholds, sizing rules, coefficients, or realised performance.
+All examples use synthetic data. The repo is designed to show the research process rather than a deployable trading strategy.
 
 ## Research Question
 
@@ -24,30 +24,24 @@ I focus on the research process rather than any deployable edge:
 
 - Python market-data handling with `pandas` and `numpy`
 - timestamp-safe joins between synthetic financial and prediction-market data
-- rolling mean, rolling volatility, and placeholder z-score scaffolding
-- simple placeholder signals
+- rolling mean, rolling volatility, and z-score feature scaffolding
+- simple example signals
 - event-driven backtesting structure
 - transaction-cost and slippage-aware P&L accounting
 - capped exposure and inventory bookkeeping
 - market-making simulator skeleton
 - research hygiene around overfitting, stale data, and lookahead bias
 
-## What Is Intentionally Excluded
+## Scope
 
-I keep the private research separate from this public repo. In particular, I exclude:
+This repo is intentionally limited to public-safe research mechanics. It does not include:
 
-- exact live signals
-- exact thresholds or trigger values
-- exact position-sizing rules
-- exact market-selection logic
-- private datasets
-- raw market-data exports
-- live or historical strategy performance
-- hit rates, Sharpe ratios, or private P&L
-- startup-specific internal code
-- credentials, API keys, or private endpoints
-
-See [PRIVATE_NOT_INCLUDED.md](PRIVATE_NOT_INCLUDED.md) for the public exclusion ledger.
+- live trading or order-placement code
+- API keys, credentials, or authenticated endpoints
+- real market-data exports
+- production strategy parameters
+- market-selection rules
+- realised strategy performance
 
 ## Repository Layout
 
@@ -89,10 +83,10 @@ features = add_rolling_zscore(aligned, column="underlying_return", window=30)
 
 The notebooks use generated data and run without credentials:
 
-1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, placeholder signals, and toy P&L.
+1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, example signals, and toy P&L.
 2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
 3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
 
 ## Disclaimer
 
-I present this as an educational and sanitised research framework. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and simple placeholder logic so the research structure is visible without disclosing private work.
+I present this as an educational research framework. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and simple example logic so the research structure is visible without relying on live market data.
