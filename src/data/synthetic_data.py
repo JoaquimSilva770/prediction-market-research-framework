@@ -1,8 +1,8 @@
 """Synthetic market-data generators for public examples.
 
 The functions in this module deliberately create toy data. They are useful for
-demonstrating research mechanics without exposing private datasets, market
-selection, or strategy-specific parameters.
+demonstrating research mechanics without relying on live datasets, market
+selection, or production strategy parameters.
 """
 
 from __future__ import annotations
@@ -84,4 +84,3 @@ def make_synthetic_event_windows(
             }
         )
     return pd.DataFrame(rows)
-

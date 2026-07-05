@@ -33,7 +33,7 @@ def add_rolling_zscore(
 ) -> pd.DataFrame:
     """Add a rolling z-score column.
 
-    The z-score is generic. Public examples avoid private trigger levels and
+    The z-score is generic. Public examples avoid production trigger levels and
     strategy-specific transformations.
     """
 

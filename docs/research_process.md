@@ -11,7 +11,7 @@ The workflow:
 5. Simulate execution with transaction costs and stale-data checks.
 6. Inspect robustness before interpreting any result.
 
-My private work uses real markets. This public repo uses synthetic data so the process can be reviewed without exposing strategy details.
+This public repo uses synthetic data so the process can be reviewed without relying on live datasets or production strategy details.
 
 ## No-Overfit Principle
 

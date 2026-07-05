@@ -6,4 +6,4 @@ I use synthetic data only in these notebooks.
 2. `02_synthetic_event_backtest.ipynb`
 3. `03_market_making_backtester_skeleton.ipynb`
 
-The notebooks use generated toy data only. They do not import private datasets, exact thresholds, market identifiers, or strategy results.
+The notebooks use generated toy data only. They do not import live datasets, exact thresholds, market identifiers, or strategy results.
