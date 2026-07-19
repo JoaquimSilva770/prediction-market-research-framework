@@ -4,7 +4,7 @@ A public research framework for studying information transmission between financ
 
 I built this to show the engineering and research mechanics behind my prediction-market work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
 
-All examples use synthetic data. The repo is designed to show the research process rather than a deployable trading strategy.
+The repo uses generated data and public-safe templates. It is designed to show the research process rather than a deployable trading strategy.
 
 ## Research Question
 
@@ -87,7 +87,7 @@ The notebooks use generated data and run without credentials:
 1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, example signals, and toy P&L.
 2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
 3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
-4. `notebooks/04_multi_position_execution_backtest.ipynb`: multi-position trade state, outcome-specific final closes, and order-book-aware fills.
+4. `notebooks/04_multi_position_execution_backtest.ipynb`: public version of the multi-position trader loop, including trade state, entry checks, debug rows, and outcome-specific final closes.
 
 ## Disclaimer
 
