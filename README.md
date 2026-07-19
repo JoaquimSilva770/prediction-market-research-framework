@@ -27,7 +27,8 @@ I focus on the research process rather than any deployable edge:
 - rolling mean, rolling volatility, and z-score feature scaffolding
 - simple example signals
 - event-driven backtesting structure
-- transaction-cost and slippage-aware P&L accounting
+- transaction-cost, fill, and spread-aware P&L accounting
+- multi-position trade ledgers with outcome-specific end-of-window handling
 - capped exposure and inventory bookkeeping
 - market-making simulator skeleton
 - research hygiene around overfitting, stale data, and lookahead bias
@@ -86,6 +87,7 @@ The notebooks use generated data and run without credentials:
 1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, example signals, and toy P&L.
 2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
 3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
+4. `notebooks/04_multi_position_execution_backtest.ipynb`: multi-position trade state, outcome-specific final closes, and order-book-aware fills.
 
 ## Disclaimer
 
