@@ -4,7 +4,7 @@ A public research framework for studying information transmission between financ
 
 I built this to show the engineering and research mechanics behind my prediction-market work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
 
-The repo uses generated data and public-safe templates. It is designed to show the research process rather than a deployable trading strategy.
+The repo uses generated data and public-safe templates. The main execution example applies one modular engine to four contrasting economic mappings rather than presenting a deployable trading strategy.
 
 ## Research Question
 
@@ -32,6 +32,19 @@ I focus on the research process rather than any deployable edge:
 - capped exposure and inventory bookkeeping
 - market-making simulator skeleton
 - research hygiene around overfitting, stale data, and lookahead bias
+
+## Four Illustrative Cases
+
+The shared engine is demonstrated through four case-study designs:
+
+| Case | Prediction contract | Linked financial series | Mapping |
+|---|---|---|---|
+| Tesla | Close above $390 at the end of June 2026 | TSLA one-minute close | Direct terminal threshold |
+| Bitcoin | New all-time high by 30 September 2026 | BTC-USD one-minute close | Path-dependent barrier |
+| Crude oil | New all-time high by 30 September 2026 | CL=F one-minute close | Discretely monitored barrier |
+| Federal Reserve | 25 bp rate increase at the September 2026 meeting | ZT=F two-year Treasury-futures close | Inverse policy proxy |
+
+These are related but non-identical claims. The examples therefore preserve a case-specific sign convention and limitation statement while using the same data schema, signal interface, displayed-depth fill model and position manager.
 
 ## Scope
 
@@ -87,7 +100,7 @@ The notebooks use generated data and run without credentials:
 1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, example signals, and toy P&L.
 2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
 3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
-4. `notebooks/04_multi_position_execution_backtest.ipynb`: public version of the multi-position trader loop, including trade state, entry checks, debug rows, and outcome-specific final closes.
+4. `notebooks/04_multi_position_execution_backtest.ipynb`: four-case illustration of the modular engine, including sign adjustment, rolling discrepancy signals, displayed-depth fills, partial exits, multiple open positions and outcome-specific final close attempts.
 
 ## Disclaimer
 

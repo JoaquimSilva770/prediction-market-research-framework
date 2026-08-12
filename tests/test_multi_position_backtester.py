@@ -56,6 +56,38 @@ def test_buy_fill_rejects_deep_level_outside_spread_limit() -> None:
     assert fill["filled_size"] == 14.0
 
 
+def test_backtest_opens_a_partial_entry_and_records_filled_size() -> None:
+    rows = []
+    for minute in range(3):
+        timestamp = pd.Timestamp("2026-01-05 14:30:00+00:00") + pd.Timedelta(
+            minutes=minute
+        )
+        for outcome in ["Yes", "No"]:
+            row = _book_row(
+                timestamp_utc=timestamp,
+                outcome=outcome,
+                rolling_deviation=5.0,
+                trade_size=20.0 if minute == 0 else 0.0,
+                ask_size_1=4.0,
+                ask_size_2=6.0,
+                ask_price_3=0.70,
+                valid_history=True,
+                valid_holding_time=True,
+            ).to_dict()
+            rows.append(row)
+
+    trades, debug = run_multi_position_backtest(
+        pd.DataFrame(rows),
+        max_hold_minutes=100.0,
+        take_profit=0.50,
+        stop_loss=0.50,
+    )
+
+    assert debug["entry_taken"].any()
+    assert debug.loc[debug["entry_taken"], "entry_filled_size"].iloc[0] == 10.0
+    assert trades["trade_size"].sum() == 10.0
+
+
 def test_sell_fill_uses_bid_levels_with_same_spread_logic() -> None:
     row = _book_row()
 

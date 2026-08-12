@@ -141,6 +141,10 @@ def estimate_sell_fill(
 def run_multi_position_backtest(
     frame: pd.DataFrame,
     *,
+    entry_z: float = 1.96,
+    max_stale_minutes: float = 8.0,
+    saturation_price: float = 0.99,
+    allow_overnight_returns: bool = False,
     max_hold_minutes: float = 60.0,
     take_profit: float = 0.20,
     stop_loss: float = 0.04,
@@ -149,8 +153,9 @@ def run_multi_position_backtest(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Run a compact multi-position backtest on synthetic order-book rows.
 
-    The input frame should contain one row per timestamp/outcome side and an
-    ``entry_side`` column with "Yes", "No", or missing values.
+    The input frame should contain one row per timestamp/outcome side. Entry
+    direction is derived from ``rolling_deviation`` and checked against the
+    row's outcome, quote freshness, book quality and timing flags.
     """
 
     data = frame.sort_values(["timestamp_utc", "outcome"]).copy()
@@ -164,9 +169,16 @@ def run_multi_position_backtest(
     for idx, row in data.iterrows():
         exit_reasons: list[str] = []
         survivors: list[dict[str, Any]] = []
-        entry_side = row.get("entry_side")
-        entry_signal = entry_side if entry_side in {"Yes", "No"} else None
+        entry_signal = _entry_side(
+            row,
+            entry_z=entry_z,
+            max_stale_minutes=max_stale_minutes,
+            saturation_price=saturation_price,
+            allow_overnight_returns=allow_overnight_returns,
+        )
         can_enter = entry_signal is not None and idx not in last_outcome_indices
+        entry_taken = False
+        entry_filled_size = 0.0
 
         for position in open_positions:
             exit_reason = _exit_reason(
@@ -181,13 +193,19 @@ def run_multi_position_backtest(
                 survivors.append(position)
                 continue
 
-            trade = _close_position(row, position, exit_reason=exit_reason)
+            trade, remaining_position = _close_position(
+                row,
+                position,
+                exit_reason=exit_reason,
+            )
             if trade is None:
                 survivors.append(position)
                 continue
 
             trades.append(trade)
             exit_reasons.append(exit_reason)
+            if remaining_position is not None:
+                survivors.append(remaining_position)
 
         open_positions = survivors
 
@@ -198,7 +216,7 @@ def run_multi_position_backtest(
                 float(row["trade_size"]),
                 max_spread=max_spread,
             )
-            if bool(fill["full_fill"]):
+            if float(fill["filled_size"]) > 0:
                 open_positions.append(
                     {
                         "position_id": next_position_id,
@@ -211,6 +229,8 @@ def run_multi_position_backtest(
                     }
                 )
                 next_position_id += 1
+                entry_taken = True
+                entry_filled_size = float(fill["filled_size"])
 
         if force_close_at_end and idx in last_outcome_indices and open_positions:
             end_survivors: list[dict[str, Any]] = []
@@ -218,12 +238,18 @@ def run_multi_position_backtest(
                 if row["outcome"] != position["entry_side"]:
                     end_survivors.append(position)
                     continue
-                trade = _close_position(row, position, exit_reason="end_of_window")
+                trade, remaining_position = _close_position(
+                    row,
+                    position,
+                    exit_reason="end_of_window",
+                )
                 if trade is None:
                     end_survivors.append(position)
                     continue
                 trades.append(trade)
                 exit_reasons.append("end_of_window")
+                if remaining_position is not None:
+                    end_survivors.append(remaining_position)
             open_positions = end_survivors
 
         debug_rows.append(
@@ -231,7 +257,9 @@ def run_multi_position_backtest(
                 "timestamp_utc": row["timestamp_utc"],
                 "outcome": row["outcome"],
                 "entry_signal": entry_signal,
-                "entry_taken": can_enter,
+                "entry_eligible": can_enter,
+                "entry_taken": entry_taken,
+                "entry_filled_size": entry_filled_size,
                 "open_positions": len(open_positions),
                 "num_exits_this_row": len(exit_reasons),
                 "exit_reasons": ",".join(exit_reasons),
@@ -239,6 +267,54 @@ def run_multi_position_backtest(
         )
 
     return pd.DataFrame(trades), pd.DataFrame(debug_rows)
+
+
+def _entry_side(
+    row: pd.Series,
+    *,
+    entry_z: float,
+    max_stale_minutes: float,
+    saturation_price: float,
+    allow_overnight_returns: bool,
+) -> str | None:
+    """Return the outcome side permitted by the row's signal and safeguards."""
+
+    ask = _as_float(row.get("ask_price_1"))
+    bid = _as_float(row.get("bid_price_1"))
+    deviation = _as_float(row.get("rolling_deviation"))
+    stale_minutes = _as_float(row.get("poly_stale_mins"))
+    trade_size = _as_float(row.get("trade_size"))
+    valid_history = bool(row.get("valid_history", True))
+    valid_holding_time = bool(row.get("valid_holding_time", True))
+
+    valid_window = valid_history and valid_holding_time
+    if allow_overnight_returns:
+        valid_window = True
+
+    if (
+        ask is None
+        or bid is None
+        or deviation is None
+        or stale_minutes is None
+        or trade_size is None
+        or trade_size <= 0
+        or stale_minutes > max_stale_minutes
+        or ask > saturation_price
+        or not bool(row.get("liquid_book", False))
+        or not valid_window
+    ):
+        return None
+
+    signal_side: str | None = None
+    if "entry_side" in row.index:
+        explicit_side = row.get("entry_side")
+        signal_side = explicit_side if explicit_side in {"Yes", "No"} else None
+    elif deviation >= entry_z:
+        signal_side = "Yes"
+    elif deviation <= -entry_z:
+        signal_side = "No"
+
+    return signal_side if row.get("outcome") == signal_side else None
 
 
 def summarise_trade_ledger(trades: pd.DataFrame) -> dict[str, float]:
@@ -274,15 +350,10 @@ def _exit_reason(
     if row["outcome"] != position["entry_side"]:
         return None
 
-    sell_fill = estimate_sell_fill(
-        row,
-        float(position["trade_size"]),
-        max_spread=float(position["max_spread"]),
-    )
-    if not bool(sell_fill["full_fill"]):
+    current_exit_price = _as_float(row.get("bid_price_1"))
+    if current_exit_price is None:
         return None
 
-    current_exit_price = float(sell_fill["avg_fill_price"])
     time_held = minutes_between(position["entry_timestamp"], row["timestamp_utc"])
 
     if current_exit_price >= float(position["entry_price"]) + take_profit:
@@ -302,31 +373,44 @@ def _close_position(
     position: dict[str, Any],
     *,
     exit_reason: str,
-) -> dict[str, Any] | None:
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     fill = estimate_sell_fill(
         row,
         float(position["trade_size"]),
         max_spread=float(position["max_spread"]),
     )
-    if not bool(fill["full_fill"]):
-        return None
+    filled_size = float(fill["filled_size"])
+    if filled_size <= 0:
+        return None, position
 
     exit_price = float(fill["avg_fill_price"])
-    pnl = (exit_price - float(position["entry_price"])) * float(position["trade_size"])
-    return {
+    entry_price = float(position["entry_price"])
+    original_size = float(position["trade_size"])
+    remaining_size = original_size - filled_size
+    pnl = (exit_price - entry_price) * filled_size
+    trade = {
         "position_id": position["position_id"],
         "entry_time": position["entry_timestamp"],
         "exit_time": row["timestamp_utc"],
         "entry_side": position["entry_side"],
         "entry_price": float(position["entry_price"]),
         "exit_price": exit_price,
-        "trade_size": float(position["trade_size"]),
-        "entry_cost": float(position["entry_cost"]),
+        "trade_size": filled_size,
+        "entry_cost": entry_price * filled_size,
         "exit_value": float(fill["total_value"]),
         "pnl": float(pnl),
         "time_held": minutes_between(position["entry_timestamp"], row["timestamp_utc"]),
         "exit_reason": exit_reason,
+        "exit_type": "full_exit" if remaining_size <= 0 else "partial_exit",
     }
+
+    if remaining_size <= 0:
+        return trade, None
+
+    remaining_position = position.copy()
+    remaining_position["trade_size"] = remaining_size
+    remaining_position["entry_cost"] = entry_price * remaining_size
+    return trade, remaining_position
 
 
 def _fill_result(

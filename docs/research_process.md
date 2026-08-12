@@ -11,7 +11,9 @@ The workflow:
 5. Simulate execution with transaction costs and stale-data checks.
 6. Inspect robustness before interpreting any result.
 
-This public repo uses synthetic data so the process can be reviewed without relying on live datasets or production strategy details.
+The four-case execution example keeps the economic mapping separate from the engine. Tesla, Bitcoin, crude oil and the Federal Reserve case share one schema and execution model, while each case retains its own linked series, payoff structure, sign convention and measurement limitation.
+
+This public repo uses generated data so the process can be reviewed without relying on live datasets or production strategy details.
 
 ## No-Overfit Principle
 
