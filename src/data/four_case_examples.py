@@ -67,6 +67,7 @@ def make_case_trade_table(
         [20.0, 15.0, 10.0, 5.0],
         default=0.0,
     )
+    adjusted_max_spread = np.minimum(0.02 + np.abs(rolling_deviation) * 0.01, 0.08)
     stale_minutes = np.arange(periods) % update_interval
     rows: list[dict[str, object]] = []
     for index, timestamp in enumerate(timestamps):
@@ -100,7 +101,13 @@ def make_case_trade_table(
                     "prediction_change": prediction_change[index],
                     "rolling_deviation": rolling_deviation[index],
                     "trade_size": trade_size[index],
-                    "liquid_book": True,
+                    "poly_spread": top_ask - top_bid,
+                    "adjusted_max_spread": adjusted_max_spread[index],
+                    "liquid_book": bool(
+                        top_ask - top_bid <= adjusted_max_spread[index]
+                        and (top_ask - top_bid) / top_ask <= 0.15
+                        and top_bid >= 0.04
+                    ),
                     "valid_history": bool(index >= 30),
                     "valid_holding_time": bool(index < periods - 60),
                 }

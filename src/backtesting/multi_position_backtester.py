@@ -22,37 +22,14 @@ def max_allowed_spread(
     *,
     base_spread: float = 0.02,
     safe_max_spread: float = 0.08,
-    entry_z: float = 1.96,
     signal_bonus_per_z: float = 0.01,
-    depth_bonus: float = 0.01,
-    stale_penalty: float = 0.005,
-    desired_size_col: str = "trade_size",
 ) -> float:
-    """Set a row-level execution-spread tolerance.
+    """Add a signal-proportional allowance to the base spread, subject to a cap."""
 
-    The rule starts from a conservative base spread, adds tolerance for a
-    stronger signal and healthier displayed depth, penalises stale books,
-    and never exceeds a hard cap.
-    """
-
-    if not bool(row.get("liquid_book", False)):
+    deviation = _as_float(row.get("rolling_deviation"))
+    if deviation is None:
         return np.nan
-
-    signal_strength = abs(float(row.get("rolling_deviation", 0.0)))
-    extra_signal = max(signal_strength - entry_z, 0.0) * signal_bonus_per_z
-
-    desired_size = float(row.get(desired_size_col, 0.0) or 0.0)
-    top_depth = float(row.get("bid_size_1", 0.0) or 0.0) + float(
-        row.get("ask_size_1", 0.0) or 0.0
-    )
-    has_good_depth = desired_size > 0 and top_depth >= 2.0 * desired_size
-    depth_component = depth_bonus if has_good_depth else 0.0
-
-    stale_mins = float(row.get("poly_stale_mins", 0.0) or 0.0)
-    stale_component = stale_penalty if stale_mins > 5 else 0.0
-
-    allowed = base_spread + extra_signal + depth_component - stale_component
-    allowed = max(base_spread, allowed)
+    allowed = base_spread + abs(deviation) * signal_bonus_per_z
     return float(min(allowed, safe_max_spread))
 
 
@@ -101,16 +78,12 @@ def estimate_sell_fill(
     row: pd.Series,
     trade_size: float,
     *,
-    max_spread: float,
     max_levels: int = 3,
+    consume_depth: bool = False,
 ) -> dict[str, float | bool | int]:
-    """Estimate a marketable sell by walking acceptable bid levels."""
+    """Walk available bids without an entry-spread gate; optionally deduct depth."""
 
-    if pd.isna(max_spread) or trade_size <= 0:
-        return _empty_fill()
-
-    reference_ask = _as_float(row.get("ask_price_1"))
-    if reference_ask is None:
+    if trade_size <= 0:
         return _empty_fill()
 
     remaining = float(trade_size)
@@ -123,14 +96,13 @@ def estimate_sell_fill(
         size = _as_float(row.get(f"bid_size_{level}"))
         if price is None or size is None or size <= 0:
             continue
-        if reference_ask - price > max_spread:
-            break
-
         fill_size = min(remaining, size)
         filled_size += fill_size
         total_proceeds += fill_size * price
         remaining -= fill_size
         levels_used += 1
+        if consume_depth:
+            row[f"bid_size_{level}"] = size - fill_size
 
         if remaining <= 0:
             break
@@ -150,23 +122,30 @@ def run_multi_position_backtest(
     stop_loss: float = 0.04,
     stop_loss_activation_minutes: float = 10.0,
     force_close_at_end: bool = True,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run a compact multi-position backtest on synthetic order-book rows.
 
     The input frame should contain one row per timestamp/outcome side. Entry
     direction is derived from ``rolling_deviation`` and checked against the
-    row's outcome, quote freshness, book quality and timing flags.
+    row's outcome, quote freshness, book quality and timing flags. Returns exit
+    fills, row diagnostics and remaining positions with indicative bid marks.
     """
 
-    data = frame.sort_values(["timestamp_utc", "outcome"]).copy()
+    data = frame.sort_values(["timestamp_utc", "outcome"]).reset_index(drop=True)
+    if data.duplicated(["timestamp_utc", "outcome"]).any():
+        raise ValueError("Expected one book row per timestamp and outcome")
     open_positions: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
     debug_rows: list[dict[str, Any]] = []
     next_position_id = 1
+    last_books: dict[str, pd.Series] = {}
 
     last_outcome_indices = set(data.groupby("outcome", sort=False).tail(1).index)
 
     for idx, row in data.iterrows():
+        last_books[row["outcome"]] = row
+        # All exits on this row share the remaining displayed bid sizes.
+        available_book = row.copy()
         exit_reasons: list[str] = []
         survivors: list[dict[str, Any]] = []
         entry_signal = _entry_side(
@@ -185,18 +164,18 @@ def run_multi_position_backtest(
                 row,
                 position,
                 max_hold_minutes=max_hold_minutes,
-                take_profit=take_profit,
-                stop_loss=stop_loss,
                 stop_loss_activation_minutes=stop_loss_activation_minutes,
+                max_stale_minutes=max_stale_minutes,
             )
             if exit_reason is None:
                 survivors.append(position)
                 continue
 
             trade, remaining_position = _close_position(
-                row,
+                available_book,
                 position,
                 exit_reason=exit_reason,
+                max_stale_minutes=max_stale_minutes,
             )
             if trade is None:
                 survivors.append(position)
@@ -210,7 +189,10 @@ def run_multi_position_backtest(
         open_positions = survivors
 
         if can_enter and row["outcome"] == entry_signal:
-            max_spread = max_allowed_spread(row)
+            if "adjusted_max_spread" in row.index:
+                max_spread = row["adjusted_max_spread"]
+            else:
+                max_spread = max_allowed_spread(row)
             fill = estimate_buy_fill(
                 row,
                 float(row["trade_size"]),
@@ -223,6 +205,9 @@ def run_multi_position_backtest(
                         "entry_timestamp": row["timestamp_utc"],
                         "entry_side": entry_signal,
                         "entry_price": float(fill["avg_fill_price"]),
+                        "entry_bid": float(row["bid_price_1"]),
+                        "stop_loss_price": float(row["bid_price_1"]) - stop_loss,
+                        "take_profit_price": float(fill["avg_fill_price"]) + take_profit,
                         "trade_size": float(fill["filled_size"]),
                         "entry_cost": float(fill["total_value"]),
                         "max_spread": float(max_spread),
@@ -239,9 +224,10 @@ def run_multi_position_backtest(
                     end_survivors.append(position)
                     continue
                 trade, remaining_position = _close_position(
-                    row,
+                    available_book,
                     position,
                     exit_reason="end_of_window",
+                    max_stale_minutes=max_stale_minutes,
                 )
                 if trade is None:
                     end_survivors.append(position)
@@ -266,7 +252,10 @@ def run_multi_position_backtest(
             }
         )
 
-    return pd.DataFrame(trades), pd.DataFrame(debug_rows)
+    remaining_positions = _mark_open_positions(
+        open_positions, last_books, max_stale_minutes=max_stale_minutes
+    )
+    return pd.DataFrame(trades), pd.DataFrame(debug_rows), remaining_positions
 
 
 def _entry_side(
@@ -282,7 +271,6 @@ def _entry_side(
     ask = _as_float(row.get("ask_price_1"))
     bid = _as_float(row.get("bid_price_1"))
     deviation = _as_float(row.get("rolling_deviation"))
-    stale_minutes = _as_float(row.get("poly_stale_mins"))
     trade_size = _as_float(row.get("trade_size"))
     valid_history = bool(row.get("valid_history", True))
     valid_holding_time = bool(row.get("valid_holding_time", True))
@@ -295,10 +283,9 @@ def _entry_side(
         ask is None
         or bid is None
         or deviation is None
-        or stale_minutes is None
         or trade_size is None
         or trade_size <= 0
-        or stale_minutes > max_stale_minutes
+        or not _quote_is_fresh(row, max_stale_minutes)
         or ask > saturation_price
         or not bool(row.get("liquid_book", False))
         or not valid_window
@@ -306,10 +293,7 @@ def _entry_side(
         return None
 
     signal_side: str | None = None
-    if "entry_side" in row.index:
-        explicit_side = row.get("entry_side")
-        signal_side = explicit_side if explicit_side in {"Yes", "No"} else None
-    elif deviation >= entry_z:
+    if deviation >= entry_z:
         signal_side = "Yes"
     elif deviation <= -entry_z:
         signal_side = "No"
@@ -317,25 +301,100 @@ def _entry_side(
     return signal_side if row.get("outcome") == signal_side else None
 
 
-def summarise_trade_ledger(trades: pd.DataFrame) -> dict[str, float]:
-    """Summarise a multi-position trade ledger."""
+def summarise_trade_ledger(
+    trades: pd.DataFrame, open_positions: pd.DataFrame
+) -> dict[str, float]:
+    """Separate exit fills, completed-position results and outstanding exposure."""
 
     summary = {
-        "trades": 0.0,
-        "total_pnl": 0.0,
+        "closed_positions": 0.0,
+        "exit_fills": float(len(trades)),
+        "realised_pnl": 0.0,
         "average_pnl": math.nan,
         "win_rate": math.nan,
-        "total_turnover": 0.0,
+        "exit_volume": 0.0,
+        "open_positions": float(len(open_positions)),
+        "open_size": 0.0,
+        "open_cost": 0.0,
+        "unmarked_positions": 0.0,
+        "marked_value": 0.0,
+        "unrealised_pnl": 0.0,
+        "total_pnl": 0.0,
     }
-    if len(trades) == 0:
-        return summary
-
-    summary["trades"] = float(len(trades))
-    summary["total_pnl"] = float(trades["pnl"].sum())
-    summary["average_pnl"] = float(trades["pnl"].mean())
-    summary["win_rate"] = float((trades["pnl"] > 0).mean())
-    summary["total_turnover"] = float(trades["trade_size"].sum())
+    if len(trades) > 0:
+        closed_ids = trades.loc[trades["exit_type"].eq("full_exit"), "position_id"]
+        position_pnl = trades.groupby("position_id")["pnl"].sum()
+        closed_pnl = position_pnl.loc[position_pnl.index.isin(closed_ids)]
+        summary["closed_positions"] = float(len(closed_pnl))
+        summary["realised_pnl"] = float(trades["pnl"].sum())
+        summary["average_pnl"] = float(closed_pnl.mean())
+        summary["win_rate"] = float((closed_pnl > 0).mean())
+        summary["exit_volume"] = float(trades["trade_size"].sum())
+    if len(open_positions) > 0:
+        summary["open_size"] = float(open_positions["trade_size"].sum())
+        summary["open_cost"] = float(open_positions["entry_cost"].sum())
+        summary["unmarked_positions"] = float(open_positions["mark_price"].isna().sum())
+        # An unavailable mark must not become a zero valuation through sum().
+        summary["marked_value"] = float(
+            open_positions["marked_value"].sum(min_count=len(open_positions))
+        )
+        summary["unrealised_pnl"] = float(
+            open_positions["unrealised_pnl"].sum(min_count=len(open_positions))
+        )
+    summary["total_pnl"] = summary["realised_pnl"] + summary["unrealised_pnl"]
     return summary
+
+
+def _mark_open_positions(
+    positions: list[dict[str, Any]],
+    last_books: dict[str, pd.Series],
+    *,
+    max_stale_minutes: float,
+) -> pd.DataFrame:
+    """Mark residual positions at their own outcome's final fresh bid, if present."""
+
+    rows = []
+    for position in positions:
+        book = last_books[position["entry_side"]]
+        mark_price = _as_float(book.get("bid_price_1"))
+        quote_age = _as_float(book.get("poly_stale_mins"))
+        if (
+            mark_price is None
+            or not math.isfinite(mark_price)
+            or not _quote_is_fresh(book, max_stale_minutes)
+        ):
+            mark_price = math.nan
+        marked_value = position["trade_size"] * mark_price
+        rows.append(
+            {
+                **position,
+                "mark_timestamp": book["timestamp_utc"],
+                "mark_stale_minutes": quote_age,
+                "mark_price": mark_price,
+                "marked_value": marked_value,
+                "unrealised_pnl": marked_value - position["entry_cost"],
+            }
+        )
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "position_id",
+            "entry_timestamp",
+            "entry_side",
+            "entry_price",
+            "entry_bid",
+            "stop_loss_price",
+            "take_profit_price",
+            "trade_size",
+            "entry_cost",
+            "max_spread",
+            "mark_timestamp",
+            "mark_stale_minutes",
+            "mark_price",
+            "marked_value",
+            "unrealised_pnl",
+        ],
+    )
 
 
 def _exit_reason(
@@ -343,11 +402,12 @@ def _exit_reason(
     position: dict[str, Any],
     *,
     max_hold_minutes: float,
-    take_profit: float,
-    stop_loss: float,
     stop_loss_activation_minutes: float,
+    max_stale_minutes: float,
 ) -> str | None:
     if row["outcome"] != position["entry_side"]:
+        return None
+    if not _quote_is_fresh(row, max_stale_minutes):
         return None
 
     current_exit_price = _as_float(row.get("bid_price_1"))
@@ -356,13 +416,13 @@ def _exit_reason(
 
     time_held = minutes_between(position["entry_timestamp"], row["timestamp_utc"])
 
-    if current_exit_price >= float(position["entry_price"]) + take_profit:
-        return "take_profit"
     if (
         time_held >= stop_loss_activation_minutes
-        and current_exit_price <= float(position["entry_price"]) - stop_loss
+        and current_exit_price <= float(position["stop_loss_price"])
     ):
         return "stop_loss"
+    if current_exit_price >= float(position["take_profit_price"]):
+        return "take_profit"
     if time_held >= max_hold_minutes:
         return "max_hold"
     return None
@@ -373,11 +433,16 @@ def _close_position(
     position: dict[str, Any],
     *,
     exit_reason: str,
+    max_stale_minutes: float,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    if not _quote_is_fresh(row, max_stale_minutes):
+        return None, position
+    if _as_float(row.get("bid_price_1")) is None:
+        return None, position
     fill = estimate_sell_fill(
         row,
         float(position["trade_size"]),
-        max_spread=float(position["max_spread"]),
+        consume_depth=True,
     )
     filled_size = float(fill["filled_size"])
     if filled_size <= 0:
@@ -394,6 +459,9 @@ def _close_position(
         "exit_time": row["timestamp_utc"],
         "entry_side": position["entry_side"],
         "entry_price": float(position["entry_price"]),
+        "entry_bid": float(position["entry_bid"]),
+        "stop_loss_price": float(position["stop_loss_price"]),
+        "take_profit_price": float(position["take_profit_price"]),
         "exit_price": exit_price,
         "trade_size": filled_size,
         "entry_cost": entry_price * filled_size,
@@ -439,7 +507,13 @@ def _empty_fill() -> dict[str, float | bool | int]:
     }
 
 
+def _quote_is_fresh(row: pd.Series, max_stale_minutes: float) -> bool:
+    age = _as_float(row.get("poly_stale_mins"))
+    return age is not None and 0 <= age <= max_stale_minutes
+
+
 def _as_float(value: Any) -> float | None:
     if value is None or pd.isna(value):
         return None
-    return float(value)
+    number = float(value)
+    return number if math.isfinite(number) else None

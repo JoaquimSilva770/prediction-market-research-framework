@@ -32,7 +32,7 @@ def run_position_backtest(
 
 
 def summarise_backtest(backtest: pd.DataFrame) -> dict[str, float]:
-    """Summarise a synthetic backtest without overclaiming."""
+    """Summarise row count, gross and net P&L, turnover and drawdown."""
 
     return {
         "rows": float(len(backtest)),
@@ -43,4 +43,3 @@ def summarise_backtest(backtest: pd.DataFrame) -> dict[str, float]:
             (backtest["equity_curve"] - backtest["equity_curve"].cummax()).min()
         ),
     }
-

@@ -1,4 +1,4 @@
-"""Toy bid/ask quote simulation."""
+"""Inventory-skewed bid/ask quotes for synthetic examples."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ def make_inventory_skewed_quote(
 ) -> dict[str, float]:
     """Create a synthetic quote around fair value with inventory skew.
 
-    Positive inventory shifts quotes lower in this toy model to encourage sells.
-    I use this as a public-safe illustration, not as real quoting logic.
+    Positive inventory shifts both quotes lower. Bid, ask and midpoint values
+    are clipped to the probability range [0, 1].
     """
 
     mid = fair_value - inventory * inventory_skew

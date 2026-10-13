@@ -1,6 +1,6 @@
 # Market-Making Framework
 
-The market-making module is a toy simulator. I use it to show the moving parts of an inventory-aware quoting process without turning the repo into a production strategy.
+The market-making module simulates quotes, fills and inventory using generated prices. Fill probabilities and costs are illustrative, not calibrated to a real market.
 
 Generic components:
 

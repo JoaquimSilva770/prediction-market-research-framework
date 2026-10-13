@@ -4,13 +4,13 @@ A public research framework for studying information transmission between financ
 
 I built this to show the engineering and research mechanics behind my prediction-market work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
 
-The repo uses generated data and public-safe templates. The main execution example applies one modular engine to four contrasting economic mappings rather than presenting a deployable trading strategy.
+The examples use synthetic data. The main execution notebook applies one modular engine to four different prediction-market relationships.
 
 ## Research Question
 
 Can movements in related financial markets provide useful information about the pricing of prediction-market contracts around discrete events?
 
-I focus on the research process rather than any deployable edge:
+I use the framework to investigate:
 
 - aligning asynchronous market data safely
 - handling stale prediction-market observations
@@ -24,7 +24,7 @@ I focus on the research process rather than any deployable edge:
 
 - Python market-data handling with `pandas` and `numpy`
 - timestamp-safe joins between synthetic financial and prediction-market data
-- rolling mean, rolling volatility, and z-score feature scaffolding
+- rolling means, volatility estimates, and z-scores
 - simple example signals
 - event-driven backtesting structure
 - transaction-cost, fill, and spread-aware P&L accounting
@@ -46,9 +46,15 @@ The shared engine is demonstrated through four case-study designs:
 
 These are related but non-identical claims. The examples therefore preserve a case-specific sign convention and limitation statement while using the same data schema, signal interface, displayed-depth fill model and position manager.
 
+### Execution Example
+
+![Generated-data execution diagnostics for the four cases](docs/figures/four_case_execution_diagnostics.png)
+
+Generated inputs only. The panels show open-position counts and cumulative realised P&L from exit fills, not historical strategy results. The [four-case notebook](notebooks/04_multi_position_execution_backtest.ipynb) includes the accounting summary and sample trade ledger, with any remaining positions reported separately.
+
 ## Scope
 
-This repo is intentionally limited to public-safe research mechanics. It does not include:
+The examples cover data preparation and simulated execution. They do not include:
 
 - live trading or order-placement code
 - API keys, credentials, or authenticated endpoints
@@ -95,13 +101,13 @@ features = add_rolling_zscore(aligned, column="underlying_return", window=30)
 
 ## Notebooks
 
-The notebooks use generated data and run without credentials:
+The notebooks use generated data and run without credentials. Saved tables and plots can be viewed directly on GitHub:
 
-1. `notebooks/01_synthetic_prediction_market_signal.ipynb`: asynchronous market alignment, rolling features, example signals, and toy P&L.
-2. `notebooks/02_synthetic_event_backtest.ipynb`: event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
-3. `notebooks/03_market_making_backtester_skeleton.ipynb`: synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
-4. `notebooks/04_multi_position_execution_backtest.ipynb`: four-case illustration of the modular engine, including sign adjustment, rolling discrepancy signals, displayed-depth fills, partial exits, multiple open positions and outcome-specific final close attempts.
+1. [Prediction-market signals](notebooks/01_synthetic_prediction_market_signal.ipynb): asynchronous market alignment, rolling features, example signals, and simulated P&L.
+2. [Event backtest](notebooks/02_synthetic_event_backtest.ipynb): event windows, one-position-at-a-time trade logging, transaction costs, and validation split structure.
+3. [Market-making skeleton](notebooks/03_market_making_backtester_skeleton.ipynb): synthetic fair value, bid/ask quoting, fills, inventory, costs, and mark-to-market accounting.
+4. [Four-case execution engine](notebooks/04_multi_position_execution_backtest.ipynb): four-case illustration of the modular engine, including sign adjustment, rolling discrepancy signals, displayed-depth fills, partial exits, multiple open positions and outcome-specific final close attempts.
 
 ## Disclaimer
 
-I present this as an educational research framework. It is not investment advice, not a live trading system, and not a deployable strategy. The examples use synthetic data and simple example logic so the research structure is visible without relying on live market data.
+This is a research project, not a live trading system or investment recommendation. The synthetic examples do not establish historical profitability.

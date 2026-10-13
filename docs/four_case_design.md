@@ -28,7 +28,7 @@ Every case uses the same interface:
 4. Standardise the discrepancy using a shifted rolling benchmark.
 5. Map positive signals to Yes rows and negative signals to No rows.
 6. Gate entries using quote freshness, two-sided books, price saturation and timing checks.
-7. Walk displayed asks for entries and displayed bids for exits.
+7. Limit entry asks by the signal-based spread allowance; sell into available bids on a valid exit.
 8. Record partial fills, residual positions, holding time, exit reason and P&L.
 
 The public notebook uses generated inputs so it demonstrates this architecture without presenting historical performance as evidence.
