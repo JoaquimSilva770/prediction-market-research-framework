@@ -1,10 +1,12 @@
 # Prediction Market Research Framework
 
-A public research framework for studying information transmission between financial markets and prediction markets.
+I study whether moves in financial markets reach related prediction-market contracts with a delay, and whether that delay could be traded after accounting for spreads, stale quotes and available liquidity.
 
-I built this to show the engineering and research mechanics behind my prediction-market work: data handling, timestamp alignment, rolling features, event-driven backtesting, transaction costs, and inventory-aware market-making concepts.
+This repository is a reproducible methodology example from that work. The main notebook follows a candidate signal through entry checks, order-book fills, multiple open positions and trade accounting, using Tesla, Bitcoin, crude oil and a Federal Reserve decision as four economic mappings.
 
-The examples use synthetic data. The main execution notebook applies one modular engine to four different prediction-market relationships.
+All prices and order books shown here are synthetic. The four-case generator includes a delayed price response by construction: the results demonstrate how the engine behaves, not evidence that any of these markets has a tradable lag. Signal windows, sizing and execution parameters are illustrative rather than a replay of historical research results.
+
+Start with the [four-case execution notebook](notebooks/04_multi_position_execution_backtest.ipynb) for the complete example, including saved tables and charts.
 
 ## Research Question
 
